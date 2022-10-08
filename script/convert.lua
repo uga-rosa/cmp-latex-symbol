@@ -2,9 +2,6 @@ local script_path = debug.getinfo(1, "S").source:sub(2)
 local target_path = script_path:gsub("convert.lua$", "") .. "unimathsymbols.txt"
 local output_path = script_path:gsub("convert.lua$", "") .. "unimathsymbols.lua"
 
----@type lsp.CompletionItem[]
-local completion_items = {}
-
 ---@param doc string
 ---@return lsp.MarkupContent
 local function format(doc)
@@ -23,10 +20,12 @@ local function format(doc)
     }
 end
 
+---@param items lsp.CompletionItem[]
 ---@param literal string
 ---@param command string
-local function add(literal, command, doc)
-    table.insert(completion_items, {
+---@param doc string
+local function add(items, literal, command, doc)
+    table.insert(items, {
         label = literal .. " " .. command,
         insertText = literal,
         filterText = command,
@@ -34,27 +33,8 @@ local function add(literal, command, doc)
     })
 end
 
-for line in io.lines(target_path) do
-    if line:sub(1, 1) == "#" then
-        goto continue
-    end
-
-    local comp = vim.split(line, "^", { plain = true })
-    local literal = comp[2]
-    if literal == "" then
-        goto continue
-    end
-
-    if comp[3] ~= "" then
-        add(literal, comp[3], comp[8])
-    end
-    if comp[4] ~= "" then
-        add(literal, comp[4], comp[8])
-    end
-
-    ::continue::
-end
-
+---@param fname string
+---@param content string
 local function write(fname, content)
     local f = assert(io.open(fname, "w"))
     f:write("return ")
@@ -62,4 +42,32 @@ local function write(fname, content)
     f:close()
 end
 
-write(output_path, vim.inspect(completion_items))
+local function main()
+    ---@type lsp.CompletionItem[]
+    local items = {}
+
+    for line in io.lines(target_path) do
+        if line:sub(1, 1) == "#" then
+            goto continue
+        end
+
+        local comp = vim.split(line, "^", { plain = true })
+        local literal = comp[2]
+        if literal == "" then
+            goto continue
+        end
+
+        if comp[3] ~= "" then
+            add(items, literal, comp[3], comp[8])
+        end
+        if comp[4] ~= "" then
+            add(items, literal, comp[4], comp[8])
+        end
+
+        ::continue::
+    end
+
+    write(output_path, vim.inspect(items))
+end
+
+main()

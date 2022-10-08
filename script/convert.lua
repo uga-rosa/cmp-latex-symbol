@@ -1,9 +1,11 @@
+local fm = vim.fn.fnamemodify
+
 local script_path = debug.getinfo(1, "S").source:sub(2)
-local target_path = script_path:gsub("convert.lua$", "") .. "unimathsymbols.txt"
-local output_path = script_path:gsub("convert.lua$", "") .. "unimathsymbols.lua"
+local target_path = fm(script_path, ":p:h") .. "/unimathsymbols.txt"
+local output_path = fm(script_path, ":p:h:h") .. "/lua/cmp_latex_symbol/unimathsymbols.lua"
 
 ---@param doc string
----@return lsp.MarkupContent
+---@return string
 local function format(doc)
     if vim.startswith(doc, "= ") then
         doc = doc:gsub("= (.-),", "alias: %1,")
@@ -14,10 +16,8 @@ local function format(doc)
     elseif vim.startswith(doc, "t ") then
         doc = doc:gsub("t (.-),", "text mode: %1,")
     end
-    return {
-        kind = "plaintext",
-        value = doc:gsub(", ", "\n"),
-    }
+    doc = doc:gsub(", ", "\n")
+    return doc
 end
 
 ---@param items lsp.CompletionItem[]
@@ -29,6 +29,7 @@ local function add(items, literal, command, doc)
         label = literal .. " " .. command,
         insertText = literal,
         filterText = command,
+        sortText = command,
         documentation = format(doc),
     })
 end
@@ -57,10 +58,10 @@ local function main()
             goto continue
         end
 
-        if comp[3] ~= "" then
+        if vim.startswith(comp[3], "\\") then
             add(items, literal, comp[3], comp[8])
         end
-        if comp[4] ~= "" then
+        if vim.startswith(comp[4], "\\") then
             add(items, literal, comp[4], comp[8])
         end
 
